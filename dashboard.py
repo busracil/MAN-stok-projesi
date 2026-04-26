@@ -102,8 +102,6 @@ def verileri_yukle():
 
     dosyalar = {
         "parametreler":  "parca_parametreleri.csv",
-        "tuketim_uzun":  "tuketim_uzun.csv",
-        "tuketim_genis": "tuketim_genis.csv",
         "tahmin":        "tahmin_sonuclari.csv",
         "performans":    "model_performans.csv",
         "baz_hat":       "simulasyon_sonuclari.csv",
@@ -194,8 +192,7 @@ baz_satir   = veri["baz_hat"][veri["baz_hat"]["parca_no"] == product_id] \
               if not veri["baz_hat"].empty else pd.DataFrame()
 tahmin_satir= veri["tahmin"][veri["tahmin"]["parca_no"] == product_id] \
               if not veri["tahmin"].empty else pd.DataFrame()
-tuketim_parca = veri["tuketim_uzun"][veri["tuketim_uzun"]["parca_no"] == product_id] \
-                if not veri["tuketim_uzun"].empty else pd.DataFrame()
+tuketim_parca = pd.DataFrame()  # tuketim_uzun kaldırıldı
 
 # Şampiyon model
 sampiyon_model = "—"

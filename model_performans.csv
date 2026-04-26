@@ -1,0 +1,3 @@
+﻿mae,rmse,mape,model
+273.1325,4474.7664,24.3816,Random Forest
+294.6243,3555.9898,93.327,XGBoost

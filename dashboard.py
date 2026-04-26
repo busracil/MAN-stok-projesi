@@ -1,5 +1,5 @@
 """
-ENM411 – MAN Türkiye A.Ş. Stok Yönetimi Optimizasyonu
+ENM412 – MAN Türkiye A.Ş. Stok Yönetimi Optimizasyonu
 Streamlit Dashboard – Web Arayüzü (v2 — CSV tabanlı)
 
 Yazarlar : Büşra ÇİL, İrem ÇELİK, Sevde SÖZDEN
@@ -94,7 +94,7 @@ st.markdown("""
 # VERİ YÜKLEME
 # ──────────────────────────────────────────────────────────────
 
-VERI_KLASORU = Path("veri")
+VERI_KLASORU = Path(".")
 
 @st.cache_data(show_spinner="Veriler yükleniyor…")
 def verileri_yukle():
@@ -134,7 +134,7 @@ with st.sidebar:
     st.markdown("""
     <div class="sidebar-brand">
         <h2>🏭 MAN Türkiye A.Ş.</h2>
-        <p>ENM411 – Stok Yönetimi Dashboard</p>
+        <p>ENM412 – Stok Yönetimi Dashboard</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -161,7 +161,7 @@ with st.sidebar:
 
     st.divider()
     st.caption("Büşra ÇİL · İrem ÇELİK · Sevde SÖZDEN")
-    st.caption("ENM411 – Endüstri Mühendisliğinde Tasarım I")
+    st.caption("ENM412 – Endüstri Mühendisliğinde Tasarım I")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ st.markdown("""
     🏭 Stok Yönetimi Optimizasyon Paneli
 </h1>
 <p style='color:#666; font-size:14px; margin-bottom:0;'>
-    MAN Türkiye A.Ş. | ENM411 Tasarım Projesi | ML + SimPy Hibrit Sistemi
+    MAN Türkiye A.Ş. | ENM412 Tasarım Projesi | ML + SimPy Hibrit Sistemi
 </p>
 """, unsafe_allow_html=True)
 
@@ -653,7 +653,7 @@ if not veri["karsilastirma"].empty:
 st.divider()
 st.markdown("""
 <div style="text-align:center; color:#999; font-size:12px; padding:10px 0;">
-    ENM411 Endüstri Mühendisliğinde Tasarım I &nbsp;|&nbsp;
+    ENM412 Endüstri Mühendisliğinde Tasarım I &nbsp;|&nbsp;
     MAN Türkiye A.Ş. Stok Yönetimi Optimizasyonu &nbsp;|&nbsp;
     Büşra ÇİL · İrem ÇELİK · Sevde SÖZDEN &nbsp;|&nbsp; 2025–2026
 </div>

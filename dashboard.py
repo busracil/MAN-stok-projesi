@@ -509,7 +509,9 @@ if not baz_satir.empty and not kar_satir.empty:
         tablo_rows = []
         for kalem, (baz_col, opt_col) in maliyet_kalemler.items():
             baz_val = float(baz_satir[baz_col].values[0]) if baz_col in baz_satir.columns else 0
-            opt_val = baz_val * (1 - abs(tasarruf_oran)/100) if "tasarruf_oran" in kar_satir.columns else 0
+            # Optimize değeri: tasarruf oranından hesapla
+            oran_val = float(kar_satir["tasarruf_orani"].values[0])/100 if "tasarruf_orani" in kar_satir.columns else 0
+            opt_val = baz_val * (1 - oran_val)
             tablo_rows.append({
                 "Maliyet Kalemi": kalem,
                 "Mevcut Sistem (TL)":   f"{baz_val:,.2f}",
@@ -533,7 +535,7 @@ if not baz_satir.empty and not kar_satir.empty:
             float(baz_satir["elde_tutma_toplam"].values[0])       if "elde_tutma_toplam"       in baz_satir.columns else 0,
             float(baz_satir["stoksuz_ceza_toplam"].values[0])     if "stoksuz_ceza_toplam"     in baz_satir.columns else 0,
         ]
-        oran = 1 - abs(tasarruf_oran) / 100
+        oran = 1 - float(kar_satir["tasarruf_orani"].values[0])/100
         opt_vals_bar = [v * oran for v in baz_vals_bar]
 
         fig2 = go.Figure()

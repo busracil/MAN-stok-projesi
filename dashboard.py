@@ -1,29 +1,30 @@
 """
-ENM412 – MAN Türkiye A.Ş. Stok Yönetimi Optimizasyonu
-Streamlit Dashboard – Web Arayüzü (v2 — CSV tabanlı)
+ENM412 – MAN Türkiye A.Ş. Stok Yönetimi Dashboard
+Yazarlar: Büşra ÇİL, İrem ÇELİK, Sevde SÖZDEN
 
-Yazarlar : Büşra ÇİL, İrem ÇELİK, Sevde SÖZDEN
-
-Çalıştırma:
+Streamlit Cloud'da çalıştırma:
     streamlit run dashboard.py
-
-Gereksinimler:
-    pip install streamlit plotly pandas numpy
 """
 
+import sys
+import pickle
 import warnings
-warnings.filterwarnings("ignore")
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
-from pathlib import Path
 
-# ──────────────────────────────────────────────────────────────
+warnings.filterwarnings("ignore")
+sys.path.insert(0, str(Path(__file__).parent))
+
+from m1_veri_hazirlik import AY_SIRALAMA, GELECEK_AYLAR
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SAYFA YAPISI
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
     page_title="MAN Türkiye – Stok Optimizasyon Paneli",
@@ -32,371 +33,285 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ──────────────────────────────────────────────────────────────
-# CSS / TEMA
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# CSS
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown("""
 <style>
-    .main { background-color: #F8F9FC; }
-    .kart {
-        background: white;
-        border-radius: 12px;
-        padding: 24px 20px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-        text-align: center;
-        border-top: 4px solid;
-    }
-    .kart-Q   { border-color: #1E4D8C; }
-    .kart-r   { border-color: #C8102E; }
-    .kart-SS  { border-color: #F39200; }
-    .kart-HZ  { border-color: #00843D; }
-    .kart-baslik {
-        font-size: 13px; color: #666; font-weight: 600;
-        letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px;
-    }
-    .kart-deger { font-size: 36px; font-weight: 800; color: #1A1A2E; line-height: 1.1; }
-    .kart-alt   { font-size: 12px; color: #999; margin-top: 6px; }
-    .metrik-kart {
-        background: white; border-radius: 12px; padding: 18px 20px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.07); text-align: center;
-        border-top: 4px solid #1E4D8C;
-    }
-    .metrik-baslik { font-size: 12px; color: #666; font-weight: 600;
-                     text-transform: uppercase; margin-bottom: 6px; }
-    .metrik-deger  { font-size: 28px; font-weight: 800; color: #1A1A2E; }
-    .metrik-model  { font-size: 11px; color: #999; margin-top: 4px; }
-    .tasarruf-banner {
-        background: linear-gradient(135deg, #00843D, #00A84F);
-        border-radius: 12px; padding: 20px 28px; color: white;
-        display: flex; justify-content: space-between; align-items: center;
-        box-shadow: 0 4px 16px rgba(0,132,61,0.25);
-    }
-    .tasarruf-banner.kirmizi {
-        background: linear-gradient(135deg, #C8102E, #E01535);
-        box-shadow: 0 4px 16px rgba(200,16,46,0.25);
-    }
-    .bolum-baslik {
-        font-size: 18px; font-weight: 700; color: #1A1A2E;
-        border-left: 4px solid #1E4D8C; padding-left: 12px; margin: 28px 0 16px;
-    }
-    .chip { display: inline-block; padding: 3px 12px; border-radius: 20px;
-            font-size: 12px; font-weight: 600; }
-    .chip-rf  { background: #E8F0FB; color: #1E4D8C; }
-    .chip-xgb { background: #FDE8EC; color: #C8102E; }
-    .sidebar-brand { text-align: center; padding: 10px 0 20px; }
-    .sidebar-brand h2 { color: #1E4D8C; font-size: 20px; font-weight: 800; margin: 0; }
-    .sidebar-brand p  { color: #888; font-size: 12px; margin: 4px 0 0; }
+.main { background-color: #F8F9FC; }
+
+.kart {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    text-align: center;
+    border-top: 4px solid;
+    margin-bottom: 8px;
+}
+.kart-Q   { border-color: #1E4D8C; }
+.kart-r   { border-color: #C8102E; }
+.kart-SS  { border-color: #F39200; }
+.kart-HZ  { border-color: #00843D; }
+.kart-baslik { font-size:12px; color:#666; font-weight:600;
+               text-transform:uppercase; margin-bottom:6px; }
+.kart-deger  { font-size:32px; font-weight:800; color:#1A1A2E; line-height:1.1; }
+.kart-alt    { font-size:11px; color:#999; margin-top:4px; }
+
+.aksiyon-kirmizi { background:#FEE2E2; border-left:4px solid #C8102E;
+                   padding:12px 16px; border-radius:8px; color:#991B1B;
+                   font-weight:600; margin:12px 0; }
+.aksiyon-sari    { background:#FEF9C3; border-left:4px solid #F39200;
+                   padding:12px 16px; border-radius:8px; color:#92400E;
+                   font-weight:600; margin:12px 0; }
+.aksiyon-yesil   { background:#DCFCE7; border-left:4px solid #00843D;
+                   padding:12px 16px; border-radius:8px; color:#166534;
+                   font-weight:600; margin:12px 0; }
+
+.tasarruf-banner {
+    background: linear-gradient(135deg, #00843D, #00A84F);
+    border-radius: 12px; padding: 20px 28px; color: white;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 4px 16px rgba(0,132,61,0.25); margin: 16px 0;
+}
+.tasarruf-banner.kirmizi {
+    background: linear-gradient(135deg, #C8102E, #E01535);
+    box-shadow: 0 4px 16px rgba(200,16,46,0.25);
+}
+.bolum-baslik {
+    font-size:17px; font-weight:700; color:#1A1A2E;
+    border-left:4px solid #1E4D8C; padding-left:12px; margin:24px 0 12px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # VERİ YÜKLEME
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 
-VERI_KLASORU = Path(".")
-
-@st.cache_data(show_spinner="Veriler yükleniyor…")
-def verileri_yukle():
-    """CSV çıktı dosyalarını yükler ve önbelleğe alır."""
-
-    dosyalar = {
-        "parametreler":  "parca_parametreleri.csv",
-        "tahmin":        "tahmin_sonuclari.csv",
-        "performans":    "model_performans.csv",
-        "baz_hat":       "simulasyon_sonuclari.csv",
-        "karsilastirma": "karsilastirma_raporu.csv",
-    }
-
-    eksik = []
-    veri  = {}
-    for anahtar, dosya in dosyalar.items():
-        yol = VERI_KLASORU / dosya
-        if yol.exists():
-            df = pd.read_csv(yol)
-            if "tarih" in df.columns:
-                df["tarih"] = pd.to_datetime(df["tarih"])
-            veri[anahtar] = df
-        else:
-            eksik.append(dosya)
-            veri[anahtar] = pd.DataFrame()
-
-    return veri, eksik
+@st.cache_resource(show_spinner="Model yükleniyor…")
+def yukle_sistem(cache_yolu, veri_yolu):
+    p = Path(cache_yolu)
+    if p.exists():
+        with open(p, "rb") as f:
+            return pickle.load(f)
+    else:
+        from m5_pipeline import pipeline_calistir
+        return pipeline_calistir(veri_yolu, cache_dosyasi=cache_yolu)
 
 
-# ──────────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False)
+def urun_analiz(_master_df, _kume_modelleri, _parca_modelleri,
+                product_id, grid_adim, n_rep):
+    from m4_sorgulama import urun_sorgula
+    return urun_sorgula(
+        product_id      = product_id,
+        master_df       = _master_df,
+        kume_modelleri  = _kume_modelleri,
+        parca_modelleri = _parca_modelleri,
+        n_ay_tahmin     = 6,
+        grid_adim       = grid_adim,
+        n_rep           = n_rep,
+        yazdir          = False,
+    )
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SİDEBAR
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 
 with st.sidebar:
     st.markdown("""
-    <div class="sidebar-brand">
-        <h2>🏭 MAN Türkiye A.Ş.</h2>
-        <p>ENM412 – Stok Yönetimi Dashboard</p>
+    <div style='text-align:center; padding:10px 0 20px;'>
+        <h2 style='color:#1E4D8C; font-size:20px; font-weight:800; margin:0;'>
+            🏭 MAN Türkiye A.Ş.
+        </h2>
+        <p style='color:#888; font-size:12px; margin:4px 0 0;'>
+            ENM412 Stok Yönetimi Dashboard
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
+    st.subheader("⚙️ Sistem Ayarları")
+    veri_yolu  = st.text_input("Veri Dosyası", value="dummy_veri_36ay.xlsx")
+    cache_yolu = st.text_input("Model Cache",   value="enm412_cache.pkl")
 
-    veri, eksik_dosyalar = verileri_yukle()
+    try:
+        sistem = yukle_sistem(cache_yolu, veri_yolu)
+        st.success(f"✅ {len(sistem['master_df']):,} parça yüklendi")
+    except Exception as e:
+        st.error(f"Yükleme hatası: {e}")
+        st.stop()
 
-    if eksik_dosyalar:
-        st.warning(f"⚠️ Eksik dosyalar:\n" + "\n".join(f"- {d}" for d in eksik_dosyalar))
-        st.info("Önce modülleri sırayla çalıştırın:\n"
-                "`python 01_veri_yukle.py`\n"
-                "`python 02_talep_tahmini.py`\n"
-                "`python 03_simulasyon.py`\n"
-                "`python 04_optimizasyon.py`")
-    else:
-        n_parca = len(veri["parametreler"])
-        st.success(f"✅ {n_parca:,} parça yüklendi")
+    master_df       = sistem["master_df"]
+    kume_modelleri  = sistem["kume_modelleri"]
+    parca_modelleri = sistem["parca_modelleri"]
+    batch_df        = sistem["batch_tahmin_df"]
 
+    st.divider()
     st.subheader("🔍 Ürün Seçimi")
-    tum_parcalar = sorted(veri["parametreler"]["parca_no"].tolist()) \
-                   if not veri["parametreler"].empty else []
-    product_id = st.selectbox("Parça Seçin", tum_parcalar, index=0) \
-                 if tum_parcalar else None
+    tum_parcalar = sorted(master_df["Parça_Kodu"].tolist())
+    product_id   = st.selectbox("Product ID", tum_parcalar, index=0)
+
+    st.divider()
+    st.subheader("🎛️ Simülasyon Parametreleri")
+    grid_adim     = st.slider("Grid Çözünürlüğü", 4, 15, 8)
+    n_rep         = st.slider("Replikasyon Sayısı", 5, 30, 10)
+
+    hesapla = st.button("🚀 Analizi Çalıştır",
+                        use_container_width=True, type="primary")
 
     st.divider()
     st.caption("Büşra ÇİL · İrem ÇELİK · Sevde SÖZDEN")
-    st.caption("ENM412 – Endüstri Mühendisliğinde Tasarım I")
+    st.caption("ENM412 – Endüstri Mühendisliğinde Tasarım II")
 
-
-# ──────────────────────────────────────────────────────────────
-# BAŞLIK
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# ANA PANEL BAŞLIĞI
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown("""
-<h1 style='color:#1A1A2E; font-size:28px; font-weight:800; margin-bottom:4px;'>
+<h1 style='color:#1A1A2E; font-size:26px; font-weight:800; margin-bottom:4px;'>
     🏭 Stok Yönetimi Optimizasyon Paneli
 </h1>
-<p style='color:#666; font-size:14px; margin-bottom:0;'>
-    MAN Türkiye A.Ş. | ENM412 Tasarım Projesi | ML + SimPy Hibrit Sistemi
+<p style='color:#666; font-size:13px;'>
+    MAN Türkiye A.Ş. | ENM412 | RF + XGBoost + LightGBM + CatBoost + SimPy + Grid Search + Optuna
 </p>
 """, unsafe_allow_html=True)
-
 st.divider()
 
-if not product_id:
-    st.info("Lütfen sol panelden bir parça seçin ve önce tüm modülleri çalıştırın.")
-    st.stop()
+# Parça başlığı
+parca_satiri = master_df[master_df["Parça_Kodu"] == product_id].iloc[0]
+kume_no      = int(parca_satiri.get("Küme_ID", 0))
+batch_satiri = batch_df[batch_df["Parça_Kodu"] == product_id]
+sampiyon_adi = batch_satiri["Sampiyon"].values[0] if not batch_satiri.empty else "—"
 
-# ──────────────────────────────────────────────────────────────
-# SEÇİLİ PARÇA VERİSİ
-# ──────────────────────────────────────────────────────────────
+c1, c2, c3, c4 = st.columns([3,1,1,1])
+with c1: st.markdown(f"### 📦 {product_id}")
+with c2: st.markdown(f"**Model:** {sampiyon_adi}")
+with c3: st.markdown(f"**Küme:** {kume_no}")
+with c4:
+    mu_val = parca_satiri.get("Mu", 0)
+    st.markdown(f"**Ort. Talep:** {mu_val:,.0f} adet/ay")
 
-param_satir = veri["parametreler"][veri["parametreler"]["parca_no"] == product_id]
-kar_satir   = veri["karsilastirma"][veri["karsilastirma"]["parca_no"] == product_id] \
-              if not veri["karsilastirma"].empty else pd.DataFrame()
-baz_satir   = veri["baz_hat"][veri["baz_hat"]["parca_no"] == product_id] \
-              if not veri["baz_hat"].empty else pd.DataFrame()
-tahmin_satir= veri["tahmin"][veri["tahmin"]["parca_no"] == product_id] \
-              if not veri["tahmin"].empty else pd.DataFrame()
-tuketim_parca = pd.DataFrame()  # tuketim_uzun kaldırıldı
+# ══════════════════════════════════════════════════════════════════════════════
+# TAHMİN GRAFİĞİ
+# ══════════════════════════════════════════════════════════════════════════════
 
-# Şampiyon model
-sampiyon_model = "—"
-if not veri["performans"].empty:
-    perf = veri["performans"]
-    sampiyon_idx = perf["mae"].idxmin() if "mae" in perf.columns else 0
-    sampiyon_model = perf.loc[sampiyon_idx, "model"] if "model" in perf.columns else "RF"
-    sampiyon_model = "RF" if "Random" in str(sampiyon_model) else "XGB"
-
-aylik_ort = float(param_satir["aylik_ort"].values[0]) if not param_satir.empty else 0
-
-# Parça başlık satırı
-col_h1, col_h2, col_h3, col_h4 = st.columns([3, 1, 1, 1])
-with col_h1:
-    st.markdown(f"### 📦 {product_id}")
-with col_h2:
-    chip_cls = "chip-rf" if sampiyon_model == "RF" else "chip-xgb"
-    st.markdown(f'<span class="chip {chip_cls}">Model: {sampiyon_model}</span>',
-                unsafe_allow_html=True)
-with col_h3:
-    tedarik = int(param_satir["tedarik_suresi"].values[0]) if not param_satir.empty else 0
-    st.markdown(f'<span class="chip chip-rf">Tedarik: {tedarik} gün</span>',
-                unsafe_allow_html=True)
-with col_h4:
-    st.markdown(f"Ort. Talep: **{aylik_ort:,.0f}** adet/ay")
-
-
-# ──────────────────────────────────────────────────────────────
-# BÖLÜM 0: MODEL PERFORMANS METRİKLERİ (MAE / RMSE / MAPE)
-# ──────────────────────────────────────────────────────────────
-
-st.markdown('<div class="bolum-baslik">🎯 Model Performans Metrikleri (Backtesting)</div>',
+st.markdown('<div class="bolum-baslik">📈 Tüketim Geçmişi & 6 Aylık Tahmin</div>',
             unsafe_allow_html=True)
 
-if not veri["performans"].empty:
-    perf_df = veri["performans"]
-    rf_row  = perf_df[perf_df["model"].str.contains("Random|RF", case=False, na=False)]
-    xgb_row = perf_df[perf_df["model"].str.contains("XGB|XGBoost", case=False, na=False)]
+gercek_vals = [float(parca_satiri.get(a, 0)) for a in AY_SIRALAMA]
 
-    def metrik_al(df, sutun):
-        return float(df[sutun].values[0]) if not df.empty and sutun in df.columns else 0
-
-    rf_mae   = metrik_al(rf_row,  "mae")
-    rf_rmse  = metrik_al(rf_row,  "rmse")
-    rf_mape  = metrik_al(rf_row,  "mape")
-    xgb_mae  = metrik_al(xgb_row, "mae")
-    xgb_rmse = metrik_al(xgb_row, "rmse")
-    xgb_mape = metrik_al(xgb_row, "mape")
-
-    # Şampiyon hangisi?
-    rf_sampiyon  = rf_mae  <= xgb_mae
-    xgb_sampiyon = not rf_sampiyon
-    rf_label  = "🏆 Random Forest" if rf_sampiyon  else "Random Forest"
-    xgb_label = "🏆 XGBoost"       if xgb_sampiyon else "XGBoost"
-
-    # 6 metrik kartı
-    mc = st.columns(6)
-    metrikler = [
-        (rf_label,  "MAE",    rf_mae,   "#1E4D8C"),
-        (rf_label,  "RMSE",   rf_rmse,  "#1E4D8C"),
-        (rf_label,  "MAPE",   rf_mape,  "#1E4D8C"),
-        (xgb_label, "MAE",    xgb_mae,  "#C8102E"),
-        (xgb_label, "RMSE",   xgb_rmse, "#C8102E"),
-        (xgb_label, "MAPE",   xgb_mape, "#C8102E"),
-    ]
-    for i, (model, metrik, deger, renk) in enumerate(metrikler):
-        with mc[i]:
-            fmt = f"%{deger:.1f}" if metrik == "MAPE" else f"{deger:,.2f}"
-            st.markdown(f"""
-            <div class="metrik-kart" style="border-top-color:{renk};">
-                <div class="metrik-baslik">{metrik}</div>
-                <div class="metrik-deger" style="color:{renk};">{fmt}</div>
-                <div class="metrik-model">{model}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    # Karşılaştırma bar grafiği
-    st.markdown("<br>", unsafe_allow_html=True)
-    fig_perf = go.Figure()
-    metrik_isimler = ["MAE", "RMSE", "MAPE (%)"]
-    rf_vals  = [rf_mae,  rf_rmse,  rf_mape]
-    xgb_vals = [xgb_mae, xgb_rmse, xgb_mape]
-
-    x = np.arange(len(metrik_isimler))
-    fig_perf.add_trace(go.Bar(
-        name="Random Forest" + (" 🏆" if rf_sampiyon else ""),
-        x=metrik_isimler, y=rf_vals,
-        marker_color="#1E4D8C", opacity=0.85,
-        text=[f"{v:,.2f}" for v in rf_vals], textposition="outside",
-    ))
-    fig_perf.add_trace(go.Bar(
-        name="XGBoost" + (" 🏆" if xgb_sampiyon else ""),
-        x=metrik_isimler, y=xgb_vals,
-        marker_color="#C8102E", opacity=0.85,
-        text=[f"{v:,.2f}" for v in xgb_vals], textposition="outside",
-    ))
-    fig_perf.update_layout(
-        barmode="group", height=320,
-        plot_bgcolor="white", paper_bgcolor="white",
-        yaxis=dict(gridcolor="#F0F0F0", title="Hata Değeri"),
-        xaxis=dict(showgrid=False),
-        legend=dict(orientation="h", yanchor="bottom", y=1.01),
-        margin=dict(l=10, r=10, t=20, b=10),
-    )
-    st.plotly_chart(fig_perf, use_container_width=True)
+if not batch_satiri.empty:
+    tahmin_cols = [c for c in batch_satiri.columns if c.startswith("Tahmin_Ay_")]
+    tahmin_vals = batch_satiri[tahmin_cols].values[0].tolist()
+    rmse_val    = float(batch_satiri["Model_RMSE"].values[0])
 else:
-    st.info("Model performans verisi bulunamadı. `02_talep_tahmini.py` çalıştırıldı mı?")
+    tahmin_vals = [mu_val] * 6
+    rmse_val    = 0
 
+fig = go.Figure()
 
-# ──────────────────────────────────────────────────────────────
-# BÖLÜM 1: TÜKETİM GEÇMİŞİ & TAHMİN GRAFİĞİ
-# ──────────────────────────────────────────────────────────────
+fig.add_trace(go.Scatter(
+    x=AY_SIRALAMA, y=gercek_vals,
+    name="Gerçek Tüketim",
+    line=dict(color="#1E4D8C", width=2.5),
+    mode="lines+markers", marker=dict(size=4),
+    hovertemplate="%{x}: <b>%{y:,.0f} adet</b><extra></extra>",
+))
 
-st.markdown('<div class="bolum-baslik">📈 Tüketim Geçmişi & Gelecek Dönem Tahmini</div>',
-            unsafe_allow_html=True)
+fig.add_trace(go.Scatter(
+    x=["Ara-24", "Oca-25"],
+    y=[gercek_vals[-1], tahmin_vals[0]],
+    mode="lines", line=dict(color="#C8102E", width=2, dash="dot"),
+    showlegend=False, hoverinfo="skip",
+))
 
-if not tuketim_parca.empty:
-    tuketim_sirali = tuketim_parca.sort_values("tarih")
-    gecmis_tarih   = tuketim_sirali["tarih"].dt.strftime("%Y-%m").tolist()
-    gecmis_vals    = tuketim_sirali["tuketim"].tolist()
+ust = [max(0, t + rmse_val) for t in tahmin_vals]
+alt = [max(0, t - rmse_val) for t in tahmin_vals]
+fig.add_trace(go.Scatter(
+    x=GELECEK_AYLAR + GELECEK_AYLAR[::-1],
+    y=ust + alt[::-1],
+    fill="toself", fillcolor="rgba(200,16,46,0.08)",
+    line=dict(color="rgba(0,0,0,0)"),
+    name="±RMSE Güven Bandı", hoverinfo="skip",
+))
 
-    # Tahmin değerleri
-    if not tahmin_satir.empty:
-        tahmin_sirali = tahmin_satir.sort_values("tahmin_tarihi")
-        tahmin_tarih  = pd.to_datetime(tahmin_sirali["tahmin_tarihi"]).dt.strftime("%Y-%m").tolist()
-        tahmin_vals   = tahmin_sirali["tahmin"].tolist()
-    else:
-        tahmin_tarih = []
-        tahmin_vals  = []
+fig.add_trace(go.Scatter(
+    x=GELECEK_AYLAR, y=tahmin_vals,
+    name=f"Tahmin ({sampiyon_adi})",
+    line=dict(color="#C8102E", width=3, dash="dash"),
+    mode="lines+markers", marker=dict(size=8, symbol="diamond"),
+    hovertemplate="%{x}: <b>%{y:,.0f} adet</b><extra></extra>",
+))
 
-    # RMSE bant için
-    rmse_bant = xgb_rmse if not xgb_sampiyon else rf_rmse if not veri["performans"].empty else 0
+# Tahmin başlangıç çizgisi
+fig.add_trace(go.Scatter(
+    x=["Ara-24","Ara-24"], y=[0, max(gercek_vals)*1.1],
+    mode="lines", line=dict(color="#999", width=1.5, dash="dot"),
+    showlegend=False, hoverinfo="skip",
+))
+fig.add_annotation(
+    x="Ara-24", y=max(gercek_vals)*1.05 if max(gercek_vals) > 0 else 1,
+    text="Tahmin →", showarrow=False,
+    font=dict(size=11, color="#666"), xanchor="left",
+)
 
-    fig1 = go.Figure()
+fig.update_layout(
+    height=350, margin=dict(l=20,r=20,t=20,b=20),
+    plot_bgcolor="white", paper_bgcolor="white",
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    xaxis=dict(showgrid=False, tickangle=-40, tickfont=dict(size=9)),
+    yaxis=dict(showgrid=True, gridcolor="#F0F0F0", title="Tüketim (adet)"),
+)
+st.plotly_chart(fig, use_container_width=True)
 
-    # Geçmiş
-    fig1.add_trace(go.Scatter(
-        x=gecmis_tarih, y=gecmis_vals,
-        name="Gerçek Tüketim",
-        line=dict(color="#1E4D8C", width=2.5),
-        mode="lines+markers", marker=dict(size=4),
-        hovertemplate="%{x}: <b>%{y:,.0f} adet</b><extra></extra>",
-    ))
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALİZ
+# ══════════════════════════════════════════════════════════════════════════════
 
-    if tahmin_tarih:
-        # Bağlantı
-        fig1.add_trace(go.Scatter(
-            x=[gecmis_tarih[-1], tahmin_tarih[0]],
-            y=[gecmis_vals[-1],  tahmin_vals[0]],
-            mode="lines", line=dict(color="#C8102E", width=2, dash="dot"),
-            showlegend=False, hoverinfo="skip",
-        ))
-
-        # Güven bandı
-        ust = [max(0, t + rmse_bant) for t in tahmin_vals]
-        alt = [max(0, t - rmse_bant) for t in tahmin_vals]
-        fig1.add_trace(go.Scatter(
-            x=tahmin_tarih + tahmin_tarih[::-1],
-            y=ust + alt[::-1],
-            fill="toself", fillcolor="rgba(200,16,46,0.08)",
-            line=dict(color="rgba(0,0,0,0)"),
-            name="±RMSE Güven Bandı", hoverinfo="skip",
-        ))
-
-        # Tahmin
-        fig1.add_trace(go.Scatter(
-            x=tahmin_tarih, y=tahmin_vals,
-            name=f"Tahmin ({sampiyon_model})",
-            line=dict(color="#C8102E", width=3, dash="dash"),
-            mode="lines+markers", marker=dict(size=8, symbol="diamond"),
-            hovertemplate="%{x}: <b>%{y:,.0f} adet</b><extra></extra>",
-        ))
-
-        # Ayrım çizgisi
-        fig1.add_vline(x=gecmis_tarih[-1], line_width=1.5,
-                       line_dash="dot", line_color="#999")
-        fig1.add_annotation(
-            x=gecmis_tarih[-1], y=max(gecmis_vals) * 1.05,
-            text="Tahmin Başlangıcı →", showarrow=False,
-            font=dict(size=11, color="#666"), xanchor="left",
-        )
-
-    fig1.update_layout(
-        height=360, margin=dict(l=20, r=20, t=20, b=20),
-        plot_bgcolor="white", paper_bgcolor="white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1),
-        xaxis=dict(showgrid=False, tickangle=-40, tickfont=dict(size=10)),
-        yaxis=dict(showgrid=True, gridcolor="#F0F0F0",
-                   title="Tüketim (adet)", tickformat=","),
-        hoverlabel=dict(bgcolor="white", font_size=13),
-    )
-    st.plotly_chart(fig1, use_container_width=True)
+if hesapla or "son_analiz" not in st.session_state or \
+   st.session_state.get("son_pid") != product_id:
+    with st.spinner(f"🔄 {product_id} için Grid Search + Optuna + SimPy çalışıyor…"):
+        try:
+            analiz = urun_analiz(
+                master_df, kume_modelleri, parca_modelleri,
+                product_id, grid_adim, n_rep
+            )
+            st.session_state["son_analiz"] = analiz
+            st.session_state["son_pid"]    = product_id
+        except Exception as e:
+            st.error(f"Analiz hatası: {e}")
+            st.stop()
 else:
-    st.info("Seçilen parça için tüketim verisi bulunamadı.")
+    analiz = st.session_state["son_analiz"]
 
+# ══════════════════════════════════════════════════════════════════════════════
+# AKSİYON UYARISI
+# ══════════════════════════════════════════════════════════════════════════════
 
-# ──────────────────────────────────────────────────────────────
-# BÖLÜM 2: OPTİMAL POLİTİKA KARTLARI
-# ──────────────────────────────────────────────────────────────
-
-st.markdown('<div class="bolum-baslik">📦 Stok Politikası Parametreleri: Mevcut vs Önerilen</div>',
+renk_map = {"red": "kirmizi", "orange": "sari", "green": "yesil"}
+aksiyon_cls = renk_map.get(analiz["aksiyon_renk"], "yesil")
+st.markdown(f'<div class="aksiyon-{aksiyon_cls}">{analiz["aksiyon"]}</div>',
             unsafe_allow_html=True)
 
-kart_html = """
+# ══════════════════════════════════════════════════════════════════════════════
+# OPTİMAL POLİTİKA KARTLARI — SATIR 1: ÖNERİLEN
+# ══════════════════════════════════════════════════════════════════════════════
+
+st.markdown('<div class="bolum-baslik">📦 Optimal Stok Politikası</div>',
+            unsafe_allow_html=True)
+
+opt_Q  = analiz["optimal_Q"]
+opt_r  = analiz["optimal_r"]
+opt_SS = analiz["optimal_SS"]
+hizmet = analiz["hizmet_duzeyi"] * 100
+Q_eoq  = analiz["Q_eoq"]
+r_eoq  = analiz["r_eoq"]
+SS_eoq = analiz["SS_eoq"]
+
+KART = """
 <div class="kart kart-{cls}">
     <div class="kart-baslik">{baslik}</div>
     <div class="kart-deger">{deger}</div>
@@ -404,256 +319,187 @@ kart_html = """
 </div>
 """
 
-if not param_satir.empty and not kar_satir.empty:
-    mevcut_r = int(param_satir["mevcut_r"].values[0])
-    mevcut_Q = int(param_satir["mevcut_Q"].values[0])
-    mevcut_SS= int(param_satir["mevcut_SS"].values[0])
-    opt_r    = int(kar_satir["onerilen_r"].values[0])
-    opt_Q    = int(kar_satir["onerilen_Q"].values[0])
-    hizmet   = float(kar_satir["servis_seviyesi"].values[0]) * 100
-    ort_stok = float(kar_satir["ortalama_stok"].values[0]) if "ortalama_stok" in kar_satir.columns else 0
+st.markdown("**📦 Önerilen Sistem (ML + Grid Search + Optuna + SimPy)**")
+k1, k2, k3, k4 = st.columns(4)
+with k1: st.markdown(KART.format(cls="Q", baslik="Sipariş Miktarı (Q*)",
+    deger=f"{opt_Q:,}", alt="adet / sipariş"), unsafe_allow_html=True)
+with k2: st.markdown(KART.format(cls="r", baslik="Yeniden Sipariş Noktası (r*)",
+    deger=f"{opt_r:,}", alt="adet (ROP)"), unsafe_allow_html=True)
+with k3: st.markdown(KART.format(cls="SS", baslik="Emniyet Stoğu (SS*)",
+    deger=f"{opt_SS:,}", alt="adet (z=1.65)"), unsafe_allow_html=True)
+with k4: st.markdown(KART.format(cls="HZ", baslik="Hizmet Düzeyi",
+    deger=f"%{hizmet:.1f}", alt="SimPy çıktısı"), unsafe_allow_html=True)
 
-    # EOQ emniyet stoğu
-    aylik_std  = float(param_satir["aylik_std"].values[0]) if "aylik_std" in param_satir.columns else 0
-    tedarik_ay = tedarik / 21
-    opt_SS     = max(int(round(1.65 * aylik_std * np.sqrt(tedarik_ay))), 0)
+st.markdown("**📐 EOQ Klasik Referans**")
+e1, e2, e3, e4 = st.columns(4)
+with e1: st.markdown(KART.format(cls="Q", baslik="EOQ Sipariş Miktarı",
+    deger=f"{Q_eoq:,}", alt="√(2SD/h)"), unsafe_allow_html=True)
+with e2: st.markdown(KART.format(cls="r", baslik="EOQ Yeniden Sipariş",
+    deger=f"{r_eoq:,}", alt="μ_L + 1.65·σ_L"), unsafe_allow_html=True)
+with e3: st.markdown(KART.format(cls="SS", baslik="EOQ Emniyet Stoğu",
+    deger=f"{SS_eoq:,}", alt="1.65 × σ_L"), unsafe_allow_html=True)
+with e4: st.markdown(KART.format(cls="HZ", baslik="EOQ Hizmet Hedefi",
+    deger="%95.0", alt="z = 1.65"), unsafe_allow_html=True)
 
-    # Önerilen sistem kartları
-    st.markdown("<div style='font-size:13px;font-weight:700;color:#666;margin-bottom:8px;'>📦 ÖNERİLEN SİSTEM (ML + Grid Search + SimPy)</div>",
-                unsafe_allow_html=True)
-    kc1, kc2, kc3, kc4 = st.columns(4)
-    with kc1:
-        st.markdown(kart_html.format(cls="Q", baslik="Sipariş Miktarı (Q*)",
-            deger=f"{opt_Q:,}", alt="adet / sipariş"), unsafe_allow_html=True)
-    with kc2:
-        st.markdown(kart_html.format(cls="r", baslik="Yeniden Sipariş Noktası (r*)",
-            deger=f"{opt_r:,}", alt="adet (ROP)"), unsafe_allow_html=True)
-    with kc3:
-        st.markdown(kart_html.format(cls="SS", baslik="Emniyet Stoğu (SS*)",
-            deger=f"{opt_SS:,}", alt="adet (z = 1.65)"), unsafe_allow_html=True)
-    with kc4:
-        st.markdown(kart_html.format(cls="HZ", baslik="Hizmet Düzeyi",
-            deger=f"{hizmet:.1f}%", alt="simülasyon çıktısı"), unsafe_allow_html=True)
+# ══════════════════════════════════════════════════════════════════════════════
+# TASARRUF BANNER
+# ══════════════════════════════════════════════════════════════════════════════
 
-    # Mevcut sistem kartları
-    st.markdown("<br><div style='font-size:13px;font-weight:700;color:#666;margin-bottom:8px;'>📋 MEVCUT SİSTEM (EOQ bazlı, sezgisel)</div>",
-                unsafe_allow_html=True)
-    km1, km2, km3, km4 = st.columns(4)
-    with km1:
-        st.markdown(kart_html.format(cls="Q", baslik="Mevcut Sipariş Miktarı (Q₀)",
-            deger=f"{mevcut_Q:,}", alt="adet / sipariş"), unsafe_allow_html=True)
-    with km2:
-        st.markdown(kart_html.format(cls="r", baslik="Mevcut Yeniden Sipariş (r₀)",
-            deger=f"{mevcut_r:,}", alt="adet (ROP)"), unsafe_allow_html=True)
-    with km3:
-        st.markdown(kart_html.format(cls="SS", baslik="Mevcut Emniyet Stoğu",
-            deger=f"{mevcut_SS:,}", alt="adet"), unsafe_allow_html=True)
-    with km4:
-        st.markdown(kart_html.format(cls="HZ", baslik="Ort. Stok Seviyesi",
-            deger=f"{ort_stok:,.0f}", alt="adet (simülasyon)"), unsafe_allow_html=True)
-else:
-    st.info("Optimizasyon verisi bulunamadı. `04_optimizasyon.py` çalıştırıldı mı?")
+tasarruf_tl   = analiz["tasarruf_tl"]
+tasarruf_oran = analiz["tasarruf_oran"]
+yeni_m        = analiz["yeni_maliyet"]
+mevcut_m      = analiz["mevcut_maliyet"]
+banner_cls    = "" if tasarruf_tl >= 0 else "kirmizi"
+banner_icon   = "✅" if tasarruf_tl >= 0 else "⚠️"
+banner_text   = "Aylık Tasarruf" if tasarruf_tl >= 0 else "Maliyet Artışı"
 
-
-# ──────────────────────────────────────────────────────────────
-# BÖLÜM 3: TASARRUF BANNER
-# ──────────────────────────────────────────────────────────────
-
-if not kar_satir.empty:
-    tasarruf_tl   = float(kar_satir["maliyet_tasarrufu"].values[0])  if "maliyet_tasarrufu" in kar_satir.columns else 0
-    tasarruf_oran = float(kar_satir["tasarruf_orani"].values[0])     if "tasarruf_orani"     in kar_satir.columns else 0
-    yeni_maliyet  = float(kar_satir["optimize_maliyet"].values[0])   if "optimize_maliyet"   in kar_satir.columns else 0
-    mevcut_mal    = float(kar_satir["mevcut_maliyet"].values[0])     if "mevcut_maliyet"     in kar_satir.columns else 0
-
-    st.markdown("")
-    if tasarruf_tl >= 0:
-        banner_cls, banner_icon, banner_text = "", "✅", "Dönemsel Tasarruf"
-    else:
-        banner_cls, banner_icon, banner_text = "kirmizi", "⚠️", "Maliyet Artışı"
-
-    st.markdown(f"""
-    <div class="tasarruf-banner {banner_cls}" style="margin-top:20px;">
-        <div>
-            <div style="font-size:14px; opacity:0.85;">{banner_icon} {banner_text}</div>
-            <div style="font-size:34px; font-weight:900;">{abs(tasarruf_tl):,.2f} TL</div>
-            <div style="font-size:13px; opacity:0.75;">
-                Mevcut: {mevcut_mal:,.0f} → Önerilen: {yeni_maliyet:,.0f} TL
-            </div>
-        </div>
-        <div style="text-align:right;">
-            <div style="font-size:13px; opacity:0.85;">Tasarruf Oranı</div>
-            <div style="font-size:48px; font-weight:900;">{abs(tasarruf_oran):.1f}%</div>
-            <div style="font-size:12px; opacity:0.75;">Simülasyon dönemi ({90} iş günü)</div>
+st.markdown(f"""
+<div class="tasarruf-banner {banner_cls}">
+    <div>
+        <div style="font-size:13px;opacity:0.85;">{banner_icon} {banner_text}</div>
+        <div style="font-size:32px;font-weight:900;">{abs(tasarruf_tl):,.2f} TL/ay</div>
+        <div style="font-size:12px;opacity:0.75;">
+            Yıllık projeksiyon: <b>{abs(tasarruf_tl)*12:,.0f} TL</b>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    <div style="text-align:right;">
+        <div style="font-size:13px;opacity:0.85;">Tasarruf Oranı</div>
+        <div style="font-size:44px;font-weight:900;">{abs(tasarruf_oran):.1f}%</div>
+        <div style="font-size:12px;opacity:0.75;">
+            Mevcut: {mevcut_m:,.0f} → Yeni: {yeni_m:,.0f} TL/ay
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# MALİYET KARŞILAŞTIRMASI
+# ══════════════════════════════════════════════════════════════════════════════
 
-# ──────────────────────────────────────────────────────────────
-# BÖLÜM 4: MALİYET KARŞILAŞTIRMASI
-# ──────────────────────────────────────────────────────────────
-
-st.markdown('<div class="bolum-baslik">💰 Maliyet Karşılaştırması: Mevcut vs Önerilen</div>',
+st.markdown('<div class="bolum-baslik">💰 Maliyet Karşılaştırması</div>',
             unsafe_allow_html=True)
 
-if not baz_satir.empty and not kar_satir.empty:
-    tab1, tab2 = st.tabs(["📋 Detaylı Tablo", "📊 Bar Grafik"])
+tab1, tab2, tab3 = st.tabs(["📋 Detaylı Tablo", "📊 Bar Grafik", "🗺️ Grid Haritası"])
 
-    with tab1:
-        maliyet_kalemler = {
-            "Sipariş Maliyeti":   ("siparis_maliyeti_toplam", "siparis_maliyeti_toplam"),
-            "Elde Tutma Maliyeti":("elde_tutma_toplam",       "elde_tutma_toplam"),
-            "Stoksuz Kalma Cezası":("stoksuz_ceza_toplam",   "stoksuz_ceza_toplam"),
-        }
+with tab1:
+    tablo = analiz["detay_karsilastirma"].copy()
+    for c in ["Mevcut (Q0/r0)", "EOQ Klasik", "Önerilen (ML+SimPy)", "Tasarruf (TL/ay)"]:
+        if c in tablo.columns:
+            tablo[c] = tablo[c].apply(lambda x: f"{x:,.2f} TL")
+    if "Tasarruf (%)" in tablo.columns:
+        tablo["Tasarruf (%)"] = tablo["Tasarruf (%)"].apply(
+            lambda x: f"{x:.1f}%" if pd.notna(x) else "—")
+    st.dataframe(tablo, hide_index=True, use_container_width=True)
 
-        tablo_rows = []
-        for kalem, (baz_col, opt_col) in maliyet_kalemler.items():
-            baz_val = float(baz_satir[baz_col].values[0]) if baz_col in baz_satir.columns else 0
-            # Optimize değeri: tasarruf oranından hesapla
-            oran_val = float(kar_satir["tasarruf_orani"].values[0])/100 if "tasarruf_orani" in kar_satir.columns else 0
-            opt_val = baz_val * (1 - oran_val)
-            tablo_rows.append({
-                "Maliyet Kalemi": kalem,
-                "Mevcut Sistem (TL)":   f"{baz_val:,.2f}",
-                "Önerilen Sistem (TL)": f"{opt_val:,.2f}",
-                "Fark (TL)":            f"{baz_val - opt_val:,.2f}",
-            })
+with tab2:
+    df_k = analiz["detay_karsilastirma"]
 
-        tablo_rows.append({
-            "Maliyet Kalemi": "🔷 TOPLAM",
-            "Mevcut Sistem (TL)":   f"{mevcut_mal:,.2f}",
-            "Önerilen Sistem (TL)": f"{yeni_maliyet:,.2f}",
-            "Fark (TL)":            f"{tasarruf_tl:,.2f}",
-        })
+    def _get(col, kw):
+        r = df_k[df_k["Maliyet Kalemi"].str.contains(kw)]
+        return float(r[col].values[0]) if len(r) > 0 and col in df_k.columns else 0
 
-        st.dataframe(pd.DataFrame(tablo_rows), hide_index=True, use_container_width=True)
+    kategoriler = ["Elde Tutma","Sipariş","Stoksuz Kalma"]
+    kw_list     = ["Elde","Sipariş","Stoksuz"]
+    col_mev     = "Mevcut (Q0/r0)"
+    col_eoq     = "EOQ Klasik"
+    col_yeni    = "Önerilen (ML+SimPy)"
 
-    with tab2:
-        kategoriler = ["Sipariş", "Elde Tutma", "Stoksuz Kalma"]
-        baz_vals_bar = [
-            float(baz_satir["siparis_maliyeti_toplam"].values[0]) if "siparis_maliyeti_toplam" in baz_satir.columns else 0,
-            float(baz_satir["elde_tutma_toplam"].values[0])       if "elde_tutma_toplam"       in baz_satir.columns else 0,
-            float(baz_satir["stoksuz_ceza_toplam"].values[0])     if "stoksuz_ceza_toplam"     in baz_satir.columns else 0,
-        ]
-        oran = 1 - float(kar_satir["tasarruf_orani"].values[0])/100
-        opt_vals_bar = [v * oran for v in baz_vals_bar]
+    fig2 = go.Figure()
+    renkler = {
+        "mev":  ["#1E4D8C","#2D6FAE","#5B93C5"],
+        "eoq":  ["#F39200","#F5A623","#F7C46A"],
+        "yeni": ["#C8102E","#E01535","#F05070"],
+    }
 
-        fig2 = go.Figure()
-        fig2.add_trace(go.Bar(name="Mevcut Sistem",  x=kategoriler, y=baz_vals_bar,
-                              marker_color="#1E4D8C", opacity=0.85,
-                              text=[f"{v:,.0f}" for v in baz_vals_bar], textposition="outside"))
-        fig2.add_trace(go.Bar(name="Önerilen Sistem", x=kategoriler, y=opt_vals_bar,
-                              marker_color="#C8102E", opacity=0.85,
-                              text=[f"{v:,.0f}" for v in opt_vals_bar], textposition="outside"))
-        fig2.update_layout(
-            barmode="group", height=380,
-            plot_bgcolor="white", paper_bgcolor="white",
-            yaxis=dict(title="TL", gridcolor="#F0F0F0"),
-            xaxis=dict(showgrid=False),
-            legend=dict(orientation="h", yanchor="bottom", y=1.01),
-            margin=dict(l=10, r=10, t=20, b=10),
-        )
-        st.plotly_chart(fig2, use_container_width=True)
+    for i, (kat, kw) in enumerate(zip(kategoriler, kw_list)):
+        fig2.add_trace(go.Bar(name=f"{kat} (Mevcut)", x=["Mevcut (Q0/r0)"],
+            y=[_get(col_mev, kw)], marker_color=renkler["mev"][i],
+            text=f"{_get(col_mev,kw):,.0f}", textposition="inside"))
+        fig2.add_trace(go.Bar(name=f"{kat} (EOQ)", x=["EOQ Klasik"],
+            y=[_get(col_eoq, kw)], marker_color=renkler["eoq"][i],
+            text=f"{_get(col_eoq,kw):,.0f}", textposition="inside"))
+        fig2.add_trace(go.Bar(name=f"{kat} (Önerilen)", x=["ML+SimPy"],
+            y=[_get(col_yeni, kw)], marker_color=renkler["yeni"][i],
+            text=f"{_get(col_yeni,kw):,.0f}", textposition="inside"))
 
+    fig2.update_layout(
+        barmode="stack", height=400,
+        plot_bgcolor="white", paper_bgcolor="white",
+        yaxis=dict(title="TL/ay", gridcolor="#F0F0F0"),
+        xaxis=dict(showgrid=False),
+        legend=dict(orientation="h", yanchor="bottom", y=1.01),
+        margin=dict(l=10,r=10,t=10,b=10),
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
-# ──────────────────────────────────────────────────────────────
-# BÖLÜM 5: PORTFÖY GENEL BAKIŞ
-# ──────────────────────────────────────────────────────────────
+with tab3:
+    grid_df = analiz.get("grid_sonuclari", pd.DataFrame())
+    if not grid_df.empty and len(grid_df) > 1:
+        try:
+            pivot = grid_df.pivot_table(
+                index="r", columns="Q", values="ort_maliyet", aggfunc="mean")
+            fig3 = px.imshow(pivot, color_continuous_scale="RdYlGn_r",
+                labels=dict(x="Q (Sipariş Miktarı)", y="r (Yeniden Sipariş)",
+                            color="Maliyet (TL/ay)"), aspect="auto")
+            fig3.add_trace(go.Scatter(
+                x=[opt_Q], y=[opt_r], mode="markers",
+                marker=dict(symbol="star", size=16, color="white",
+                            line=dict(color="black", width=2)),
+                name="Optimal (Q*, r*)", showlegend=True,
+            ))
+            fig3.update_layout(height=380, margin=dict(l=10,r=10,t=30,b=10))
+            st.plotly_chart(fig3, use_container_width=True)
+            st.caption(f"⭐ Optimal: Q*={opt_Q:,}, r*={opt_r:,} → {yeni_m:,.2f} TL/ay")
+        except Exception:
+            st.info("Grid haritası bu parça için oluşturulamadı.")
+    else:
+        st.info("Grid verileri yükleniyor...")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PORTFÖY GENEL BAKIŞ
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown('<div class="bolum-baslik">📊 Portföy Genel Bakış</div>',
             unsafe_allow_html=True)
 
-if not veri["karsilastirma"].empty:
-    kar_df = veri["karsilastirma"]
-    pc1, pc2, pc3 = st.columns(3)
+pc1, pc2 = st.columns(2)
 
-    with pc1:
-        # Şampiyon model pasta grafiği
-        if not veri["performans"].empty:
-            perf = veri["performans"]
-            model_labels = perf["model"].tolist() if "model" in perf.columns else ["RF", "XGB"]
-            mae_vals     = perf["mae"].tolist()   if "mae"   in perf.columns else [0, 0]
-            fig_s = go.Figure(go.Pie(
-                labels=model_labels, values=[1/v if v > 0 else 0 for v in mae_vals],
-                hole=0.45,
-                marker_colors=["#1E4D8C", "#C8102E"],
-            ))
-            fig_s.update_layout(
-                title="Şampiyon Model (MAE bazlı)",
-                height=280, margin=dict(l=10, r=10, t=40, b=10),
-                plot_bgcolor="white", paper_bgcolor="white",
-            )
-            st.plotly_chart(fig_s, use_container_width=True)
+with pc1:
+    samp = batch_df["Sampiyon"].str.upper().value_counts().reset_index()
+    samp.columns = ["Model","Sayı"]
+    fig_s = px.pie(samp, values="Sayı", names="Model",
+        title="Şampiyon Model Dağılımı",
+        color="Model",
+        color_discrete_map={
+            "RF":"#1E4D8C","XGB":"#C8102E",
+            "LGBM":"#F39200","CATBOOST":"#00843D"
+        }, hole=0.45)
+    fig_s.update_layout(height=280, margin=dict(l=10,r=10,t=40,b=10),
+                        plot_bgcolor="white", paper_bgcolor="white")
+    st.plotly_chart(fig_s, use_container_width=True)
 
-    with pc2:
-        # Tasarruf oranı histogramı
-        if "tasarruf_orani" in kar_df.columns:
-            fig_h = go.Figure(go.Histogram(
-                x=kar_df["tasarruf_orani"].dropna(),
-                nbinsx=30, marker_color="#00843D", opacity=0.85,
-            ))
-            ort_tasarruf = kar_df["tasarruf_orani"].mean()
-            fig_h.add_vline(x=ort_tasarruf, line_color="black",
-                            line_dash="dash", line_width=2,
-                            annotation_text=f"Ort: %{ort_tasarruf:.1f}",
-                            annotation_position="top right")
-            fig_h.update_layout(
-                title="Maliyet Tasarruf Oranı Dağılımı (%)",
-                height=280, margin=dict(l=10, r=10, t=40, b=10),
-                plot_bgcolor="white", paper_bgcolor="white",
-                xaxis_title="Tasarruf (%)", yaxis_title="Parça Sayısı",
-                yaxis=dict(gridcolor="#F0F0F0"), xaxis=dict(showgrid=False),
-            )
-            st.plotly_chart(fig_h, use_container_width=True)
+with pc2:
+    kume = master_df["Küme_ID"].value_counts().sort_index().reset_index()
+    kume.columns = ["Küme","Parça Sayısı"]
+    kume["Küme"] = kume["Küme"].apply(lambda x: f"Küme {x}")
+    fig_k = px.bar(kume, x="Küme", y="Parça Sayısı",
+        title="K-Means Küme Dağılımı",
+        color="Küme", color_discrete_sequence=px.colors.qualitative.Set2)
+    fig_k.update_layout(height=280, margin=dict(l=10,r=10,t=40,b=10),
+                        plot_bgcolor="white", paper_bgcolor="white",
+                        xaxis=dict(showgrid=False),
+                        yaxis=dict(gridcolor="#F0F0F0"), showlegend=False)
+    st.plotly_chart(fig_k, use_container_width=True)
 
-    with pc3:
-        # Servis seviyesi dağılımı
-        if "servis_seviyesi" in kar_df.columns:
-            ss_vals = kar_df["servis_seviyesi"].dropna() * 100
-            fig_ss = go.Figure(go.Histogram(
-                x=ss_vals, nbinsx=25, marker_color="#1E4D8C", opacity=0.85,
-            ))
-            fig_ss.add_vline(x=95, line_color="#C8102E",
-                             line_dash="dash", line_width=2,
-                             annotation_text="Hedef: %95",
-                             annotation_position="top left")
-            fig_ss.update_layout(
-                title="Servis Seviyesi Dağılımı (%)",
-                height=280, margin=dict(l=10, r=10, t=40, b=10),
-                plot_bgcolor="white", paper_bgcolor="white",
-                xaxis_title="Servis Seviyesi (%)", yaxis_title="Parça Sayısı",
-                yaxis=dict(gridcolor="#F0F0F0"), xaxis=dict(showgrid=False),
-            )
-            st.plotly_chart(fig_ss, use_container_width=True)
-
-    # Portföy özet metrikleri
-    st.markdown("<br>", unsafe_allow_html=True)
-    pm1, pm2, pm3, pm4, pm5 = st.columns(5)
-    ozet_metrikler = [
-        ("Toplam Parça",          f"{len(kar_df):,}",                                      "portföy"),
-        ("Ort. Tasarruf",         f"%{kar_df['tasarruf_orani'].mean():.1f}"
-                                  if 'tasarruf_orani' in kar_df.columns else "—",          "maliyet"),
-        ("Toplam Tasarruf",       f"{kar_df['maliyet_tasarrufu'].sum():,.0f} TL"
-                                  if 'maliyet_tasarrufu' in kar_df.columns else "—",       "toplam"),
-        ("%95 Sev. Sağlayan",     f"%{(kar_df['servis_seviyesi']>=0.95).mean()*100:.0f}"
-                                  if 'servis_seviyesi' in kar_df.columns else "—",         "servis"),
-        ("Ort. Servis Seviyesi",  f"%{kar_df['servis_seviyesi'].mean()*100:.1f}"
-                                  if 'servis_seviyesi' in kar_df.columns else "—",         "hizmet"),
-    ]
-    for col, (baslik, deger, _) in zip([pm1,pm2,pm3,pm4,pm5], ozet_metrikler):
-        with col:
-            st.metric(baslik, deger)
-
-
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # FOOTER
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.divider()
 st.markdown("""
-<div style="text-align:center; color:#999; font-size:12px; padding:10px 0;">
-    ENM412 Endüstri Mühendisliğinde Tasarım I &nbsp;|&nbsp;
-    MAN Türkiye A.Ş. Stok Yönetimi Optimizasyonu &nbsp;|&nbsp;
-    Büşra ÇİL · İrem ÇELİK · Sevde SÖZDEN &nbsp;|&nbsp; 2025–2026
+<div style="text-align:center; color:#999; font-size:12px; padding:8px 0;">
+    ENM412 Endüstri Mühendisliğinde Tasarım II &nbsp;|&nbsp;
+    MAN Türkiye A.Ş. &nbsp;|&nbsp;
+    Büşra ÇİL · İrem ÇELİK · Sevde SÖZDEN &nbsp;|&nbsp; 2024–2025
 </div>
 """, unsafe_allow_html=True)
